@@ -35,11 +35,11 @@ def tokenize(source: str) -> list[str]:
                     buffer.clear()
                     continue
 
-                if letter in ".":
+                if letter in ".,":
                     buffer.pop()
                     if buffer:
                         tokens.append("".join(buffer))
-                    tokens.append(".")
+                    tokens.append(letter)
                     buffer.clear()
                     continue
 
@@ -61,6 +61,13 @@ def tokenize(source: str) -> list[str]:
                     continue
 
             case Mode.NUMBER:
+                if letter == ",":
+                    tokens.append("".join(buffer))
+                    buffer.clear()
+                    tokens.append(",")
+                    mode = Mode.NONE
+                    continue
+
                 if letter != " ":
                     buffer.append(letter)
 
@@ -210,7 +217,7 @@ JOSAS = {
     "보다": ["보다"],
 }
 
-BUILTIN_JOSAS = {
+BUILTIN_FUNCTIONS = {
     "선언": [JOSAS["를"], JOSAS["로"]],
     "대입": [JOSAS["에"], JOSAS["로"]],
     "출력": [JOSAS["를"]],
@@ -339,8 +346,8 @@ def parse(lexicons):
 
     # get available josa list
     josas = list()
-    if action in BUILTIN_JOSAS:
-        josas = BUILTIN_JOSAS[action]
+    if action in BUILTIN_FUNCTIONS:
+        josas = BUILTIN_FUNCTIONS[action]
     else:
         raise Papara.NameError(
             f"서술어가 발견되지 않습니다. 서술어는 '{action}'입니다.",
@@ -378,7 +385,11 @@ def parse(lexicons):
     if not tree[None]:
         del tree[None]
 
-    return {"action": action, "tree": tree, "sentence": BlockType.SENTENCE}
+    return {
+        "action": action,
+        "tree": tree,
+        "type": BlockType.SENTENCE,
+    }
 
 
 if __name__ == "__main__":
