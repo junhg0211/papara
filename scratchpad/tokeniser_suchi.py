@@ -178,6 +178,9 @@ class Papara:
     class InvalidBlock(Exception):
         pass
 
+    class ParseError(Exception):
+        pass
+
 
 def parse_sentences(lexicons):
     sentences = list()
@@ -233,6 +236,7 @@ class BlockType:
     EACH = 3
     FUNCTION = 4
     SENTENCE = 10
+    LITERAL = 20
 
 
 def parse_if(lexicons):
@@ -301,6 +305,77 @@ def parse_function(lexicons):
         "type": BlockType.FUNCTION,
         "lexicons": lexicons,
     }
+
+
+def parse_int(raw):
+    letters = list(raw)
+
+    negative = False
+    if letters[0] == "-":
+        negative = True
+        letters.pop(0)
+
+    result = 0
+    for letter in letters:
+        result *= 10
+        result += ord(letter) - ord("0")
+
+    if negative:
+        result *= -1
+
+    return result
+
+
+def parse_float(raw):
+    letters = list(raw)
+
+    negative = False
+    if letters[0] == "-":
+        negative = True
+        letters.pop(0)
+
+    dot_index = letters.index(".")
+
+    result = 0.0
+    weight = 10.0 ** (dot_index - 1)
+    for i in range(len(letters)):
+        if letters[i] == ".":
+            continue
+
+        result += weight * parse_int(letters[i])
+        weight /= 10.0
+
+    if negative:
+        result *= -1
+
+    return result
+
+
+def parse_value(lexicons):
+    if len(lexicons) == 1:
+        lexicon = lexicons[0]
+        if lexicon[0] == Lexicon.LITERAL_INTEGER:
+            return {
+                "type": BlockType.LITERAL,
+                "class": lexicon[0],
+                "value": parse_int(lexicon[1]),
+            }
+
+        if lexicon[0] == Lexicon.LITERAL_FLOAT:
+            return {
+                "type": BlockType.LITERAL,
+                "class": lexicon[0],
+                "value": parse_float(lexicon[1]),
+            }
+
+        if lexicon[0] == Lexicon.LITERAL_STRING:
+            return {
+                "type": BlockType.LITERAL,
+                "class": lexicon[0],
+                "value": lexicon[1],
+            }
+
+        raise Papara.ParseError("알 수 없는 리터럴 타입입니다.")
 
 
 def parse(lexicons):
@@ -375,13 +450,13 @@ def parse(lexicons):
 
         # push to tree
         if is_josa:
-            tree[previous_josa] = value[::-1]
+            tree[previous_josa] = parse_value(value[::-1])
             value = list()
         else:
             value.append(lexicon)
 
         previous_josa = now_josa
-    tree[now_josa] = value[::-1]
+    tree[now_josa] = parse_value(value[::-1])
     if not tree[None]:
         del tree[None]
 
