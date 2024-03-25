@@ -218,6 +218,7 @@ JOSAS = {
     "가": ["이", "가"],
     "와": ["와", "과"],
     "보다": ["보다"],
+    "의": ["의"],
 }
 
 BUILTIN_FUNCTIONS = {
@@ -226,6 +227,7 @@ BUILTIN_FUNCTIONS = {
     "출력": [JOSAS["를"]],
     "같음": [JOSAS["가"], JOSAS["와"]],
     "작음": [JOSAS["가"], JOSAS["보다"]],
+    "묶음": [JOSAS["의"]],
 }
 
 
@@ -237,6 +239,9 @@ class BlockType:
     FUNCTION = 4
     SENTENCE = 10
     LITERAL = 20
+    NAME = 21
+    MULTIPLE = 22
+    COMPLEX = 23
 
 
 def parse_if(lexicons):
@@ -352,6 +357,9 @@ def parse_float(raw):
 
 
 def parse_value(lexicons):
+    if not lexicons:
+        return {}
+
     if len(lexicons) == 1:
         lexicon = lexicons[0]
         if lexicon[0] == Lexicon.LITERAL_INTEGER:
@@ -375,13 +383,29 @@ def parse_value(lexicons):
                 "value": lexicon[1],
             }
 
-        raise Papara.ParseError("알 수 없는 리터럴 타입입니다.")
+        return {
+            "type": BlockType.NAME,
+            "name": lexicon[1],
+        }
+
+    # if value is special case that made with OF or BEING
+    if lexicons[-2][0] in [Lexicon.KEYWORD_OF, Lexicon.KEYWORD_BEING]:
+        class_ = lexicons.pop()[1]
+        lexicons.pop()
+        return {
+            "type": BlockType.COMPLEX,
+            "class": class_,
+            "content": parse(lexicons, True),
+        }
+
+    # return parse(lexicons)
+    return lexicons
 
 
-def parse(lexicons):
+def parse(lexicons, enable_multiple=False):
     # -- sentence with nothing
     if len(lexicons) < 2:
-        return dict()
+        return parse_value(lexicons)
 
     # -- sentence with block
     if lexicons[-2][0] == Lexicon.KEYWORD_END:
@@ -412,6 +436,26 @@ def parse(lexicons):
             return parse_each(lexicons)
         if block_type == BlockType.FUNCTION:
             return parse_function(lexicons)
+
+    # -- multiple sentence connected with ','
+    if enable_multiple and any(
+        map(lambda x: x[0] == Lexicon.PUNCTUATION_COMMA, lexicons)
+    ):
+        sentences = list()
+        buffer = list()
+        for lexicon in lexicons:
+            if lexicon[0] == Lexicon.PUNCTUATION_COMMA:
+                sentences.append(buffer)
+                buffer = list()
+                continue
+            buffer.append(lexicon)
+        if buffer:
+            sentences.append(buffer)
+
+        return {
+            "type": BlockType.MULTIPLE,
+            "content": sentences,
+        }
 
     # -- single sentence
     # get action name
