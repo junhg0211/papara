@@ -356,7 +356,26 @@ def parse_float(raw):
     return result
 
 
+def get_precision(operator):
+    if operator[0] in [
+        Lexicon.OPERATION_TIMES,
+        Lexicon.OPERATION_OVER,
+        Lexicon.OPERATION_MODULO,
+    ]:
+        return 2
+
+    if operator[0] in [Lexicon.OPERATION_PLUS, Lexicon.OPERATION_MINUS]:
+        return 1
+
+    return 0
+
+
 def parse_value(lexicons):
+    if isinstance(lexicons, dict):
+        return lexicons
+    if isinstance(lexicons, tuple):
+        return parse_value([lexicons])
+
     if not lexicons:
         return {}
 
@@ -398,8 +417,40 @@ def parse_value(lexicons):
             "content": parse(lexicons, True),
         }
 
-    # return parse(lexicons)
-    return lexicons
+    value_stack = list()
+    operator_stack = list()
+    for lexicon in lexicons:
+        precision = get_precision(lexicon)
+
+        if precision == 0:
+            value_stack.append(lexicon)
+            continue
+
+        if not operator_stack:
+            operator_stack.append(lexicon)
+            continue
+
+        that_precision = get_precision(operator_stack[-1])
+        if that_precision > precision:
+            while operator_stack:
+                new_precision = get_precision(operator_stack[-1])
+                if new_precision != that_precision:
+                    break
+
+                a = parse_value(value_stack.pop())
+                b = parse_value(value_stack.pop())
+                operator = operator_stack.pop()[0]
+                value_stack.append({"operator": operator, "a": a, "b": b})
+
+        operator_stack.append(lexicon)
+
+    while len(value_stack) > 1:
+        a = parse_value(value_stack.pop())
+        b = parse_value(value_stack.pop())
+        operator = operator_stack.pop()[0]
+        value_stack.append({"operator": operator, "a": a, "b": b})
+
+    return value_stack[0]
 
 
 def parse(lexicons, enable_multiple=False):
