@@ -9,6 +9,10 @@ ID_START_RE = r"[\p{XID_Start}\p{Extended_Pictographic}\p{Emoji_Component}]"
 ID_CONTINUE_RE = r"[\p{XID_Continue}\p{Extended_Pictographic}\p{Emoji_Component}]"
 
 KEYWORDS = {
+    "더하기": TT.ADD,
+    "빼기": TT.SUB,
+    "곱하기": TT.MULT,
+    "나누기": TT.DIV,
     "만약": TT.IF,
     "이면": TT.THEN,
     "동안": TT.WHILE,
