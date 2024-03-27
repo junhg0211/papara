@@ -34,12 +34,16 @@ class Tokenizer:
                     self.add_token(TT.DOT)
                 case ",":
                     self.add_token(TT.COMMA)
+                case "(":
+                    self.add_token(TT.LPAREN)
+                case ")":
+                    self.add_token(TT.RPAREN)
 
                 case " " | "\t" | "\r" | "\n":
                     pass
 
-                case "(":
-                    self.comment()
+                # case "(":
+                #     self.comment()
 
                 case '"':
                     self.string()

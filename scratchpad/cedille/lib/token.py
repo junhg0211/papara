@@ -5,6 +5,8 @@ class TT:
     DOT = "`.`"
     COMMA = "`,`"
     SLASH = "`/`"
+    LPAREN = "`(`"
+    RPAREN = "`)`"
 
     ADD = "`더하기`"
     SUB = "`빼기`"
