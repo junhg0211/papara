@@ -1,8 +1,8 @@
 import regex
 
-from lib.error import *
-from lib.location import *
-from lib.token import *
+from error.compile import CompileError, CompileErrorCode, Label
+from location import Location
+from compiler.token import TT, Token
 
 DIGIT_RE = r"[0-9]"
 ID_START_RE = r"[\p{XID_Start}\p{Extended_Pictographic}\p{Emoji_Component}]"
@@ -25,23 +25,29 @@ KEYWORDS = {
 class Tokenizer:
     def __init__(self, filename: str, source: str) -> None:
         self.location = Location(filename, source, 0, 0)
-        self.tokens = list()
-        self.errors = list()
+        self.tokens = list[Token]()
+        self.errors = list[CompileError]()
 
-    def tokenize(self) -> tuple[list[Token], list[Error]]:
+    def tokenize(self) -> tuple[list[Token], list[CompileError]]:
         while not self.is_at_end():
             self.location.start = self.location.end
 
             c = self.advance()
             match c:
-                case ".":
-                    self.add_token(TT.DOT)
-                case ",":
-                    self.add_token(TT.COMMA)
                 case "(":
                     self.add_token(TT.LPAREN)
                 case ")":
                     self.add_token(TT.RPAREN)
+                case ".":
+                    self.add_token(TT.DOT)
+                case ",":
+                    self.add_token(TT.COMMA)
+                case "/":
+                    self.add_token(TT.SLASH)
+                case "+":
+                    self.add_token(TT.PLUS)
+                case "-":
+                    self.add_token(TT.MINUS)
 
                 case " " | "\t" | "\r" | "\n":
                     pass
@@ -59,7 +65,9 @@ class Tokenizer:
                         self.identifier()
                     else:
                         self.add_error(
-                            Error(ErrorCode.UnexpectedChar, [Label(self.location)])
+                            CompileError(
+                                CompileErrorCode.UNEXPECTED_CHAR, [Label(self.location)]
+                            )
                         )
 
         self.tokens.append(Token(TT.EOF, "", self.location))
@@ -70,10 +78,10 @@ class Tokenizer:
             self.advance()
 
         text = self.location.source[self.location.start : self.location.end]
-        type = KEYWORDS.get(text)
-        if type is None:
-            type = TT.IDENTIFIER
-        self.add_token(type)
+        tokentype = KEYWORDS.get(text)
+        if tokentype is None:
+            tokentype = TT.IDENTIFIER
+        self.add_token(tokentype)
 
     def number(self):
         while self.is_digit(self.peek()):
@@ -93,7 +101,9 @@ class Tokenizer:
 
         if self.is_at_end():
             return self.add_error(
-                Error(ErrorCode.UnterminatedComment, [Label(self.location)])
+                CompileError(
+                    CompileErrorCode.UNTERMINATED_COMMENT, [Label(self.location)]
+                )
             )
 
         self.advance()
@@ -107,7 +117,9 @@ class Tokenizer:
 
         if self.is_at_end():
             return self.add_error(
-                Error(ErrorCode.UnterminatedString, [Label(self.location)])
+                CompileError(
+                    CompileErrorCode.UNTERMINATED_STRING, [Label(self.location)]
+                )
             )
 
         self.advance()
@@ -146,11 +158,11 @@ class Tokenizer:
     def is_digit(self, char: str) -> bool:
         return regex.match(DIGIT_RE, char) is not None
 
-    def add_token(self, type: TT):
+    def add_token(self, tokentype: str):
         lexeme = self.location.source[self.location.start : self.location.end]
-        self.tokens.append(Token(type, lexeme, self.location))
+        self.tokens.append(Token(tokentype, lexeme, self.location))
 
-    def add_error(self, error: Error):
+    def add_error(self, error: CompileError):
         self.errors.append(error)
         print(error.code, error.labels[0].location.start, error.labels[0].location.end)
 

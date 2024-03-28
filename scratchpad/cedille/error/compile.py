@@ -1,15 +1,16 @@
-from .location import *
+from enum import Enum
+from location import Location
 
 
-class ErrorCode:
+class CompileErrorCode(Enum):
     """
     E0XXX: 문법 오류
     E1XXX~E9XXX: 컴파일 오류
     """
 
-    UnexpectedChar = "E0001"
-    UnterminatedComment = "E0002"
-    UnterminatedString = "E0003"
+    UNEXPECTED_CHAR = "E0001"
+    UNTERMINATED_COMMENT = "E0002"
+    UNTERMINATED_STRING = "E0003"
 
 
 class Label:
@@ -18,13 +19,13 @@ class Label:
         self.message = message
 
 
-class Error:
+class CompileError:
     def __init__(
         self,
-        code: ErrorCode,
+        code: CompileErrorCode,
         labels: list[Label],
         note: str = "",
-        help: str = "",
+        help_message: str = "",
     ) -> None:
         """
         code: 오류 코드
@@ -35,4 +36,4 @@ class Error:
         self.code = code
         self.labels = labels
         self.note = note
-        self.help = help
+        self.help_message = help_message
